@@ -1,5 +1,6 @@
 use std::net::{TcpStream, ToSocketAddrs};
 use openssl::ssl::{SslContext, SslStream};
+use openssl::ssl::error::Error as SslError;
 use std::io::{Read, Write};
 
 use super::mailbox::Mailbox;
@@ -39,7 +40,7 @@ impl Client<TcpStream> {
 		try!(self.run_command_and_check_ok("STARTTLS"));
 		SslStream::connect(&ssl_context, self.stream)
 			.map(|s| Client::new(s))
-			.map_err(|e| Error::Ssl(e))
+			.map_err(|_| Error::Ssl(SslError::ZeroReturn))
 	}
 }
 
@@ -50,7 +51,7 @@ impl Client<SslStream<TcpStream>> {
 			Ok(stream) => {
 				let ssl_stream = match SslStream::connect(&ssl_context, stream) {
 					Ok(s) => s,
-					Err(e) => return Err(Error::Ssl(e))
+					Err(_) => return Err(Error::Ssl(SslError::ZeroReturn))
 				};
 				let mut socket = Client::new(ssl_stream);
 

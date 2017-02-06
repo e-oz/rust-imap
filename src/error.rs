@@ -3,7 +3,7 @@ use std::result;
 use std::fmt;
 use std::error::Error as StdError;
 
-use openssl::ssl::error::SslError;
+use openssl::ssl::error::Error as SslError;
 
 pub type Result<T> = result::Result<T, Error>;
 
