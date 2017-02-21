@@ -1,6 +1,6 @@
 use std::net::{TcpStream, ToSocketAddrs};
-use openssl::ssl::{SslContext, SslStream};
-use openssl::ssl::error::Error as SslError;
+use openssl::ssl::{SslContext, SslStream, Ssl};
+use openssl::ssl::Error as SslError;
 use std::io::{Read, Write};
 
 use super::mailbox::Mailbox;
@@ -38,7 +38,11 @@ impl Client<TcpStream> {
 	pub fn secure(mut self, ssl_context: SslContext) -> Result<Client<SslStream<TcpStream>>> {
 		// TODO This needs to be tested
 		try!(self.run_command_and_check_ok("STARTTLS"));
-		SslStream::connect(&ssl_context, self.stream)
+		let ssl = match Ssl::new(&ssl_context) {
+			Ok(s) => s,
+			Err(err) => return Err(Error::Ssl(SslError::Ssl(err)))
+		};
+		Ssl::connect(ssl, self.stream)
 			.map(|s| Client::new(s))
 			.map_err(|_| Error::Ssl(SslError::ZeroReturn))
 	}
@@ -49,7 +53,11 @@ impl Client<SslStream<TcpStream>> {
 	pub fn secure_connect<A: ToSocketAddrs>(addr: A, ssl_context: SslContext) -> Result<Client<SslStream<TcpStream>>> {
 		match TcpStream::connect(addr) {
 			Ok(stream) => {
-				let ssl_stream = match SslStream::connect(&ssl_context, stream) {
+				let ssl = match Ssl::new(&ssl_context) {
+					Ok(s) => s,
+					Err(err) => return Err(Error::Ssl(SslError::Ssl(err)))
+				};
+				let ssl_stream = match Ssl::connect(ssl, stream) {
 					Ok(s) => s,
 					Err(_) => return Err(Error::Ssl(SslError::ZeroReturn))
 				};
